@@ -8,6 +8,7 @@ from sklearn.decomposition import PCA
 from sklearn.manifold import TSNE
 from sklearn.preprocessing import StandardScaler
 from scipy.cluster.hierarchy import dendrogram, linkage
+import matplotlib.subplots as plt_subplots
 import matplotlib.pyplot as plt
 import matplotlib.cm as cm
 import matplotlib.colors as mcolors
@@ -15,7 +16,7 @@ import random
 
 st.set_page_config(page_title="Intellectual Network Explorer", layout="wide")
 
-# --- 1. Embedded Data Generation (15 Features) ---
+# --- 1. Embedded Data Generation ---
 @st.cache_data
 def load_data():
     SEED = 42
@@ -84,23 +85,20 @@ def load_data():
             
         data.append({
             'ID': i, 'Name': name, 'City': city, 'Discipline': discipline,
-            'Age': int(age),
-            'Social_Class_Index': round(social_class, 1),
-            'Wealth_Index': round(wealth, 1),
-            'Avg_Sentence_Length': round(max(5, avg_sent), 1),
-            'Sentiment_Polarity': round(sentiment, 2),
-            'Publications_Count': int(pubs),
-            'Travel_Frequency': int(travel),
-            'Radicalism_Score': round(radicalism, 2),
-            'Patronage_Income': int(patronage),
-            'Correspondence_Volume': int(letters),
-            'Vocabulary_Richness': round(vocab, 2),
-            'Public_Speeches': int(speeches),
-            'Polymath_Score': round(polymath, 2),
-            'Censorship_Incidents': int(censorship),
+            'Age': int(age), 'Social_Class_Index': round(social_class, 1), 'Wealth_Index': round(wealth, 1),
+            'Avg_Sentence_Length': round(max(5, avg_sent), 1), 'Sentiment_Polarity': round(sentiment, 2),
+            'Publications_Count': int(pubs), 'Travel_Frequency': int(travel), 'Radicalism_Score': round(radicalism, 2),
+            'Patronage_Income': int(patronage), 'Correspondence_Volume': int(letters), 'Vocabulary_Richness': round(vocab, 2),
+            'Public_Speeches': int(speeches), 'Polymath_Score': round(polymath, 2), 'Censorship_Incidents': int(censorship),
             'University_Tenure': int(tenure)
         })
+    
+    # Shuffle the numeric columns so the "giveaway" features are hidden among the noise
     nodes_df = pd.DataFrame(data)
+    base_cols = ['ID', 'Name', 'City', 'Discipline']
+    numeric_cols = [col for col in nodes_df.columns if col not in base_cols]
+    random.shuffle(numeric_cols)
+    nodes_df = nodes_df[base_cols + numeric_cols]
 
     edges = []
     INTRA_CITY_PROB = 0.12
@@ -130,20 +128,28 @@ def load_data():
 st.markdown("""
     <style>
     .main { background-color: #f5f1e6; }
+    .story-text { font-size: 1.15rem; color: #3b3a36; line-height: 1.6; font-family: 'Georgia', serif; margin-bottom: 25px; border-left: 4px solid #8c7b6c; padding-left: 20px;}
     </style>
     """, unsafe_allow_html=True)
 
-st.title("📜 19th-Century Intellectual Network Explorer")
+st.title("📜 The 19th-Century Intellectual Network")
+
+# --- Narrative Story / Game Target ---
+st.markdown("""
+<div class="story-text">
+    <p><b>The Year is 1888.</b> Across the English Channel, two vastly different intellectual worlds have taken shape. In the hazy, absinthe-soaked cafés of <b>Paris</b>, a chaotic salon culture thrives. Here, romantic poets passionately debate with stoic political economists and natural philosophers—ideas flowing freely across disciplines regardless of one's academic background.</p>
+    <p>Meanwhile, behind the heavy mahogany doors of <b>London's</b> exclusive gentlemen's clubs, a different society operates. The British thinkers are strictly siloed. Natural philosophers speak only to other natural philosophers, and economists associate solely with their own kind. It is an era of rigid categorization, where crossing the aisle is a social faux pas.</p>
+    <p><b>Your Mission:</b> You have intercepted a cache of biographical ledgers and postal records detailing the lives and correspondences of 120 prominent thinkers. The records are messy; 15 different numerical traits—from their wealth and radicalism scores to the average length of their sentences—have been mixed together randomly. Your target is to act as a historical data detective. Use the mathematical tools on the left to cut through the noise, discover which hidden variables truly define these disciplines, and visually prove the stark contrast between the Parisian salon and the London silo.</p>
+</div>
+""", unsafe_allow_html=True)
+
 st.sidebar.header("Settings & Tools")
 
 df_nodes, df_edges = load_data()
-
-# Dynamically gather all 15 numerical features for ML/Algorithms
 features = [col for col in df_nodes.columns if col not in ['ID', 'Name', 'City', 'Discipline']]
 
 viz_type = st.sidebar.selectbox("Select Visualization", ["Network Graph", "PCA Projection", "t-SNE Projection", "Dendrogram"])
 
-# Allow user to color by City, Discipline, or any of the 15 numeric features
 color_options = ['Discipline', 'City'] + features
 color_by = st.sidebar.selectbox("Color Nodes By", color_options)
 
@@ -151,7 +157,6 @@ is_categorical = color_by in ['Discipline', 'City']
 
 # --- 3. Visualization Logic ---
 if viz_type in ["PCA Projection", "t-SNE Projection"]:
-    # PCA and t-SNE now process all 15 dimensions to find patterns!
     x = StandardScaler().fit_transform(df_nodes[features])
     
     if viz_type == "PCA Projection":
@@ -167,7 +172,7 @@ if viz_type in ["PCA Projection", "t-SNE Projection"]:
     viz_df = pd.concat([viz_df, df_nodes], axis=1)
     
     fig = px.scatter(viz_df, x='Dim 1', y='Dim 2', color=color_by,
-                     hover_name='Name', hover_data=['City', 'Discipline'] + features[:3], # Show a few features on hover
+                     hover_name='Name', hover_data=['City', 'Discipline'] + features[:3], 
                      title=f"{viz_type}{title_suffix}", template="none")
     fig.update_traces(marker=dict(size=12, line=dict(width=1, color='DarkSlateGrey')))
     st.plotly_chart(fig, use_container_width=True)
@@ -219,7 +224,6 @@ elif viz_type == "Network Graph":
 elif viz_type == "Dendrogram":
     st.subheader(f"Hierarchical Clustering (Leaves colored by {color_by})")
     
-    # Dendrogram now uses all 15 features to calculate similarity!
     linked = linkage(df_nodes[features], 'ward')
     fig, ax = plt.subplots(figsize=(14, 7))
     fig.patch.set_facecolor('#f5f1e6')
