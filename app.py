@@ -15,7 +15,7 @@ import random
 
 st.set_page_config(page_title="Intellectual Network Explorer", layout="wide")
 
-# --- 1. Embedded Data Generation ---
+# --- 1. Embedded Data Generation (15 Features) ---
 @st.cache_data
 def load_data():
     SEED = 42
@@ -34,21 +34,71 @@ def load_data():
         discipline = random.choice(disciplines)
         name = f"{random.choice(first_names)} {random.choice(last_names)} {chr(65 + (i % 26))}" 
         
+        # Base independent features
+        age = np.random.randint(25, 85)
+        social_class = np.clip(np.random.normal(50, 20), 1, 100)
+        wealth = np.clip(np.random.normal(social_class, 15), 1, 100)
+        
+        # Correlated features based on discipline
         if discipline == 'Literature':
             avg_sent = np.random.normal(15, 3)     
-            sentiment = np.random.uniform(-0.8, 0.8) 
+            sentiment = np.random.uniform(-0.8, 0.8)
+            pubs = np.random.poisson(10)
+            travel = np.random.poisson(5)
+            radicalism = np.clip(np.random.normal(0.7, 0.2), 0, 1)
+            patronage = np.random.exponential(2000)
+            letters = np.random.poisson(40)
+            vocab = np.clip(np.random.normal(0.85, 0.05), 0, 1)
+            speeches = np.random.poisson(5)
+            polymath = np.clip(np.random.normal(0.4, 0.2), 0, 1)
+            censorship = np.random.poisson(2)
+            tenure = np.clip(np.random.normal(2, 5), 0, 40)
+            
         elif discipline == 'Natural Philosophy':
             avg_sent = np.random.normal(26, 4)     
             sentiment = np.random.normal(0.1, 0.15)  
-        else: 
+            pubs = np.random.poisson(25)
+            travel = np.random.poisson(2)
+            radicalism = np.clip(np.random.normal(0.3, 0.15), 0, 1)
+            patronage = np.random.exponential(500)
+            letters = np.random.poisson(20)
+            vocab = np.clip(np.random.normal(0.6, 0.1), 0, 1)
+            speeches = np.random.poisson(15)
+            polymath = np.clip(np.random.normal(0.8, 0.15), 0, 1)
+            censorship = np.random.poisson(0.2)
+            tenure = np.clip(np.random.normal(25, 10), 0, 40)
+            
+        else: # Political Economy
             avg_sent = np.random.normal(38, 4)     
             sentiment = np.random.normal(0.0, 0.05)   
+            pubs = np.random.poisson(8)
+            travel = np.random.poisson(1)
+            radicalism = np.clip(np.random.normal(0.5, 0.25), 0, 1)
+            patronage = np.random.exponential(100)
+            letters = np.random.poisson(60)
+            vocab = np.clip(np.random.normal(0.5, 0.1), 0, 1)
+            speeches = np.random.poisson(30)
+            polymath = np.clip(np.random.normal(0.5, 0.2), 0, 1)
+            censorship = np.random.poisson(1)
+            tenure = np.clip(np.random.normal(15, 12), 0, 40)
             
         data.append({
             'ID': i, 'Name': name, 'City': city, 'Discipline': discipline,
-            'Avg_Sentence_Length': round(max(5, avg_sent), 2),
-            'Sentiment_Polarity': round(sentiment, 3),
-            'Wealth_Index': round(np.random.uniform(1, 100), 2)
+            'Age': int(age),
+            'Social_Class_Index': round(social_class, 1),
+            'Wealth_Index': round(wealth, 1),
+            'Avg_Sentence_Length': round(max(5, avg_sent), 1),
+            'Sentiment_Polarity': round(sentiment, 2),
+            'Publications_Count': int(pubs),
+            'Travel_Frequency': int(travel),
+            'Radicalism_Score': round(radicalism, 2),
+            'Patronage_Income': int(patronage),
+            'Correspondence_Volume': int(letters),
+            'Vocabulary_Richness': round(vocab, 2),
+            'Public_Speeches': int(speeches),
+            'Polymath_Score': round(polymath, 2),
+            'Censorship_Incidents': int(censorship),
+            'University_Tenure': int(tenure)
         })
     nodes_df = pd.DataFrame(data)
 
@@ -87,30 +137,38 @@ st.title("📜 19th-Century Intellectual Network Explorer")
 st.sidebar.header("Settings & Tools")
 
 df_nodes, df_edges = load_data()
-features = ['Avg_Sentence_Length', 'Sentiment_Polarity', 'Wealth_Index']
+
+# Dynamically gather all 15 numerical features for ML/Algorithms
+features = [col for col in df_nodes.columns if col not in ['ID', 'Name', 'City', 'Discipline']]
 
 viz_type = st.sidebar.selectbox("Select Visualization", ["Network Graph", "PCA Projection", "t-SNE Projection", "Dendrogram"])
 
-color_options = ['Discipline', 'City', 'Avg_Sentence_Length', 'Sentiment_Polarity', 'Wealth_Index']
+# Allow user to color by City, Discipline, or any of the 15 numeric features
+color_options = ['Discipline', 'City'] + features
 color_by = st.sidebar.selectbox("Color Nodes By", color_options)
 
 is_categorical = color_by in ['Discipline', 'City']
 
 # --- 3. Visualization Logic ---
 if viz_type in ["PCA Projection", "t-SNE Projection"]:
+    # PCA and t-SNE now process all 15 dimensions to find patterns!
     x = StandardScaler().fit_transform(df_nodes[features])
     
     if viz_type == "PCA Projection":
-        components = PCA(n_components=2).fit_transform(x)
+        pca = PCA(n_components=2)
+        components = pca.fit_transform(x)
+        var_explained = sum(pca.explained_variance_ratio_) * 100
+        title_suffix = f" (Captures {var_explained:.1f}% of variance)"
     else:
         components = TSNE(n_components=2, perplexity=30, random_state=42).fit_transform(x)
+        title_suffix = ""
         
     viz_df = pd.DataFrame(components, columns=['Dim 1', 'Dim 2'])
     viz_df = pd.concat([viz_df, df_nodes], axis=1)
     
     fig = px.scatter(viz_df, x='Dim 1', y='Dim 2', color=color_by,
-                     hover_name='Name', hover_data=['City', 'Discipline'],
-                     title=f"{viz_type} (Colored by {color_by})", template="none")
+                     hover_name='Name', hover_data=['City', 'Discipline'] + features[:3], # Show a few features on hover
+                     title=f"{viz_type}{title_suffix}", template="none")
     fig.update_traces(marker=dict(size=12, line=dict(width=1, color='DarkSlateGrey')))
     st.plotly_chart(fig, use_container_width=True)
 
@@ -129,7 +187,6 @@ elif viz_type == "Network Graph":
 
     node_x, node_y, node_text, node_color = [], [], [], []
     
-    # Generate node positions and text
     for node in G.nodes():
         x_pos, y_pos = pos[node]
         node_x.append(x_pos)
@@ -138,7 +195,6 @@ elif viz_type == "Network Graph":
         node_text.append(f"<b>{node_info['Name']}</b><br>{color_by}: {node_info[color_by]}")
         node_color.append(node_info[color_by])
 
-    # Plotly formatting depending on categorical vs continuous variables
     if is_categorical:
         unique_labels = list(set(node_color))
         palette = px.colors.qualitative.Plotly 
@@ -162,6 +218,8 @@ elif viz_type == "Network Graph":
 
 elif viz_type == "Dendrogram":
     st.subheader(f"Hierarchical Clustering (Leaves colored by {color_by})")
+    
+    # Dendrogram now uses all 15 features to calculate similarity!
     linked = linkage(df_nodes[features], 'ward')
     fig, ax = plt.subplots(figsize=(14, 7))
     fig.patch.set_facecolor('#f5f1e6')
