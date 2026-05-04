@@ -8,6 +8,7 @@ from sklearn.decomposition import PCA
 from sklearn.manifold import TSNE
 from sklearn.preprocessing import StandardScaler
 from scipy.cluster.hierarchy import dendrogram, linkage
+import umap
 import matplotlib.pyplot as plt
 import matplotlib.cm as cm
 import matplotlib.colors as mcolors
@@ -123,7 +124,6 @@ def load_data():
 # --- 2. App UI & Styling ---
 st.markdown("""
     <style>
-    /* Force high contrast text on light vintage background */
     .stApp { background-color: #f5f1e6; color: #1a1a1a !important; }
     h1, h2, h3, h4, p, span, label, .stSelectbox { color: #1a1a1a !important; }
     
@@ -154,9 +154,9 @@ st.sidebar.header("Settings & Tools")
 df_nodes, df_edges = load_data()
 features = [col for col in df_nodes.columns if col not in ['ID', 'Name', 'City', 'Discipline']]
 
-viz_type = st.sidebar.selectbox("Select Visualization", ["Network Graph", "PCA Projection", "t-SNE Projection", "Dendrogram"])
+# Added UMAP to the dropdown choices
+viz_type = st.sidebar.selectbox("Select Visualization", ["Network Graph", "PCA Projection", "t-SNE Projection", "UMAP Projection", "Dendrogram"])
 
-# Mix the dropdown options completely so City/Discipline are hidden among the numbers
 color_options = ['Discipline', 'City'] + features
 random.Random(42).shuffle(color_options) 
 color_by = st.sidebar.selectbox("Color Nodes By", color_options)
@@ -164,7 +164,7 @@ color_by = st.sidebar.selectbox("Color Nodes By", color_options)
 is_categorical = color_by in ['Discipline', 'City']
 
 # --- 3. Visualization Logic ---
-if viz_type in ["PCA Projection", "t-SNE Projection"]:
+if viz_type in ["PCA Projection", "t-SNE Projection", "UMAP Projection"]:
     x = StandardScaler().fit_transform(df_nodes[features])
     
     if viz_type == "PCA Projection":
@@ -172,9 +172,13 @@ if viz_type in ["PCA Projection", "t-SNE Projection"]:
         components = pca.fit_transform(x)
         var_explained = sum(pca.explained_variance_ratio_) * 100
         title_suffix = f" (Captures {var_explained:.1f}% of variance)"
-    else:
+    elif viz_type == "t-SNE Projection":
         components = TSNE(n_components=2, perplexity=30, random_state=42).fit_transform(x)
         title_suffix = ""
+    else: # UMAP logic
+        reducer = umap.UMAP(random_state=42, n_neighbors=15, min_dist=0.1)
+        components = reducer.fit_transform(x)
+        title_suffix = " (Preserves Global & Local Structure)"
         
     viz_df = pd.DataFrame(components, columns=['Dim 1', 'Dim 2'])
     viz_df = pd.concat([viz_df, df_nodes], axis=1)
@@ -188,7 +192,6 @@ if viz_type in ["PCA Projection", "t-SNE Projection"]:
 
 elif viz_type == "Network Graph":
     G = nx.from_pandas_edgelist(df_edges, 'Source', 'Target', ['Weight'])
-    # Increased k slightly to space the nodes out a bit more organically
     pos = nx.spring_layout(G, k=0.18, seed=42)
     
     edge_x, edge_y = [], []
@@ -230,7 +233,6 @@ elif viz_type == "Network Graph":
              showlegend=False, 
              font=dict(color='#1a1a1a'),
              xaxis=dict(showgrid=False, zeroline=False, showticklabels=False), 
-             # scaleanchor="x" locks the aspect ratio so the graph cannot stretch horizontally
              yaxis=dict(showgrid=False, zeroline=False, showticklabels=False, scaleanchor="x", scaleratio=1),
              plot_bgcolor='#f5f1e6', paper_bgcolor='#f5f1e6',
              margin=dict(l=0, r=0, t=40, b=0)
@@ -270,7 +272,6 @@ elif viz_type == "Dendrogram":
             val = df_nodes[df_nodes['Name'] == name][color_by].values[0]
             lbl.set_color(cmap(norm(val)))
             
-    # Make axis text dark for contrast
     ax.tick_params(axis='y', colors='#1a1a1a')
     ax.spines['bottom'].set_color('#1a1a1a')
     ax.spines['left'].set_color('#1a1a1a') 
