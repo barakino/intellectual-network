@@ -34,12 +34,10 @@ def load_data():
         discipline = random.choice(disciplines)
         name = f"{random.choice(first_names)} {random.choice(last_names)} {chr(65 + (i % 26))}" 
         
-        # Base independent features
         age = np.random.randint(25, 85)
         social_class = np.clip(np.random.normal(50, 20), 1, 100)
         wealth = np.clip(np.random.normal(social_class, 15), 1, 100)
         
-        # Correlated features based on discipline
         if discipline == 'Literature':
             avg_sent = np.random.normal(15, 3)     
             sentiment = np.random.uniform(-0.8, 0.8)
@@ -92,7 +90,6 @@ def load_data():
             'University_Tenure': int(tenure)
         })
     
-    # Shuffle the numeric columns so the "giveaway" features are hidden among the noise
     nodes_df = pd.DataFrame(data)
     base_cols = ['ID', 'Name', 'City', 'Discipline']
     numeric_cols = [col for col in nodes_df.columns if col not in base_cols]
@@ -126,14 +123,24 @@ def load_data():
 # --- 2. App UI & Styling ---
 st.markdown("""
     <style>
-    .main { background-color: #f5f1e6; }
-    .story-text { font-size: 1.15rem; color: #3b3a36; line-height: 1.6; font-family: 'Georgia', serif; margin-bottom: 25px; border-left: 4px solid #8c7b6c; padding-left: 20px;}
+    /* Force high contrast text on light vintage background */
+    .stApp { background-color: #f5f1e6; color: #1a1a1a !important; }
+    h1, h2, h3, h4, p, span, label, .stSelectbox { color: #1a1a1a !important; }
+    
+    .story-text { 
+        font-size: 1.15rem; 
+        color: #1a1a1a !important; 
+        line-height: 1.6; 
+        font-family: 'Georgia', serif; 
+        margin-bottom: 25px; 
+        border-left: 4px solid #8c7b6c; 
+        padding-left: 20px;
+    }
     </style>
     """, unsafe_allow_html=True)
 
 st.title("📜 The 19th-Century Intellectual Network")
 
-# --- Narrative Story / Game Target ---
 st.markdown("""
 <div class="story-text">
     <p><b>The Year is 1888.</b> Across the English Channel, two vastly different intellectual worlds have taken shape. In the hazy, absinthe-soaked cafés of <b>Paris</b>, a chaotic salon culture thrives. Here, romantic poets passionately debate with stoic political economists and natural philosophers—ideas flowing freely across disciplines regardless of one's academic background.</p>
@@ -149,7 +156,9 @@ features = [col for col in df_nodes.columns if col not in ['ID', 'Name', 'City',
 
 viz_type = st.sidebar.selectbox("Select Visualization", ["Network Graph", "PCA Projection", "t-SNE Projection", "Dendrogram"])
 
+# Mix the dropdown options completely so City/Discipline are hidden among the numbers
 color_options = ['Discipline', 'City'] + features
+random.Random(42).shuffle(color_options) 
 color_by = st.sidebar.selectbox("Color Nodes By", color_options)
 
 is_categorical = color_by in ['Discipline', 'City']
@@ -174,11 +183,13 @@ if viz_type in ["PCA Projection", "t-SNE Projection"]:
                      hover_name='Name', hover_data=['City', 'Discipline'] + features[:3], 
                      title=f"{viz_type}{title_suffix}", template="none")
     fig.update_traces(marker=dict(size=12, line=dict(width=1, color='DarkSlateGrey')))
+    fig.update_layout(font=dict(color='#1a1a1a'), plot_bgcolor='#f5f1e6', paper_bgcolor='#f5f1e6')
     st.plotly_chart(fig, use_container_width=True)
 
 elif viz_type == "Network Graph":
     G = nx.from_pandas_edgelist(df_edges, 'Source', 'Target', ['Weight'])
-    pos = nx.spring_layout(G, k=0.15, seed=42)
+    # Increased k slightly to space the nodes out a bit more organically
+    pos = nx.spring_layout(G, k=0.18, seed=42)
     
     edge_x, edge_y = [], []
     for edge in G.edges():
@@ -187,7 +198,7 @@ elif viz_type == "Network Graph":
         edge_x.extend([x0, x1, None])
         edge_y.extend([y0, y1, None])
 
-    edge_trace = go.Scatter(x=edge_x, y=edge_y, line=dict(width=0.5, color='#888'), hoverinfo='none', mode='lines')
+    edge_trace = go.Scatter(x=edge_x, y=edge_y, line=dict(width=0.8, color='rgba(136, 136, 136, 0.4)'), hoverinfo='none', mode='lines')
 
     node_x, node_y, node_text, node_color = [], [], [], []
     
@@ -203,20 +214,27 @@ elif viz_type == "Network Graph":
         unique_labels = list(set(node_color))
         palette = px.colors.qualitative.Plotly 
         color_strings = [palette[unique_labels.index(c) % len(palette)] for c in node_color]
-        marker_dict = dict(showscale=False, size=12, color=color_strings, line=dict(width=1, color='white'))
+        marker_dict = dict(showscale=False, size=14, color=color_strings, line=dict(width=1.5, color='white'))
     else:
-        marker_dict = dict(showscale=True, colorscale='Viridis', size=12, color=node_color, 
-                           colorbar=dict(title=color_by, thickness=15), line=dict(width=1, color='white'))
+        marker_dict = dict(showscale=True, colorscale='Viridis', size=14, color=node_color, 
+                           colorbar=dict(title=color_by, thickness=15, tickfont=dict(color='#1a1a1a')), 
+                           line=dict(width=1.5, color='white'))
 
     node_trace = go.Scatter(
         x=node_x, y=node_y, mode='markers', hoverinfo='text', text=node_text, marker=marker_dict
     )
 
     fig = go.Figure(data=[edge_trace, node_trace],
-         layout=go.Layout(title=f'Interactive Network (Colored by {color_by})', showlegend=False, 
-         xaxis=dict(showgrid=False, zeroline=False, showticklabels=False), 
-         yaxis=dict(showgrid=False, zeroline=False, showticklabels=False),
-         plot_bgcolor='#f5f1e6', paper_bgcolor='#f5f1e6')
+         layout=go.Layout(
+             title=f'Interactive Network (Colored by {color_by})', 
+             showlegend=False, 
+             font=dict(color='#1a1a1a'),
+             xaxis=dict(showgrid=False, zeroline=False, showticklabels=False), 
+             # scaleanchor="x" locks the aspect ratio so the graph cannot stretch horizontally
+             yaxis=dict(showgrid=False, zeroline=False, showticklabels=False, scaleanchor="x", scaleratio=1),
+             plot_bgcolor='#f5f1e6', paper_bgcolor='#f5f1e6',
+             margin=dict(l=0, r=0, t=40, b=0)
+         )
     )
     st.plotly_chart(fig, use_container_width=True)
 
@@ -251,5 +269,10 @@ elif viz_type == "Dendrogram":
             name = lbl.get_text()
             val = df_nodes[df_nodes['Name'] == name][color_by].values[0]
             lbl.set_color(cmap(norm(val)))
+            
+    # Make axis text dark for contrast
+    ax.tick_params(axis='y', colors='#1a1a1a')
+    ax.spines['bottom'].set_color('#1a1a1a')
+    ax.spines['left'].set_color('#1a1a1a') 
             
     st.pyplot(fig)
