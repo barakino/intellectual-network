@@ -124,11 +124,11 @@ def load_data():
 # --- 2. App UI & Styling ---
 st.markdown("""
     <style>
-    /* Force high contrast text on main page */
+    /* 1. Force high contrast text on main page */
     .stApp { background-color: #f5f1e6; color: #1a1a1a !important; }
     h1, h2, h3, h4, p, span, label { color: #1a1a1a !important; }
     
-    /* Target the Sidebar explicitly to ensure a light background */
+    /* 2. Target the Sidebar explicitly to ensure a light background */
     [data-testid="stSidebar"] {
         background-color: #e3dcc9 !important; 
     }
@@ -136,7 +136,20 @@ st.markdown("""
         color: #1a1a1a !important;
     }
     
-    /* FIX: Force dropdown menus (popovers) to be light with dark text */
+    /* 3. FIX: The CLOSED state of the dropdown (the chosen category) */
+    div[data-baseweb="select"] > div {
+        background-color: #f5f1e6 !important; /* Vintage paper background */
+        border-color: #8c7b6c !important; /* A nice vintage brown border */
+        color: #1a1a1a !important;
+    }
+    div[data-baseweb="select"] span {
+        color: #1a1a1a !important; /* Dark text for the chosen option */
+    }
+    div[data-baseweb="select"] svg {
+        fill: #1a1a1a !important; /* Make the little dropdown arrow dark so you can see it */
+    }
+    
+    /* 4. FIX: The OPEN state of the dropdown menus (popovers) */
     [data-baseweb="popover"] > div {
         background-color: #f5f1e6 !important;
     }
@@ -149,11 +162,11 @@ st.markdown("""
     li[role="option"] span {
         color: #1a1a1a !important;
     }
-    /* Add a subtle highlight when hovering over dropdown options */
     li[role="option"]:hover {
         background-color: #e3dcc9 !important;
     }
     
+    /* 5. Story Text formatting */
     .story-text { 
         font-size: 1.15rem; 
         color: #1a1a1a !important; 
