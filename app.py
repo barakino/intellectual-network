@@ -126,14 +126,32 @@ st.markdown("""
     <style>
     /* Force high contrast text on main page */
     .stApp { background-color: #f5f1e6; color: #1a1a1a !important; }
-    h1, h2, h3, h4, p, span, label, .stSelectbox { color: #1a1a1a !important; }
+    h1, h2, h3, h4, p, span, label { color: #1a1a1a !important; }
     
     /* Target the Sidebar explicitly to ensure a light background */
     [data-testid="stSidebar"] {
-        background-color: #e3dcc9 !important; /* Slightly darker vintage paper color */
+        background-color: #e3dcc9 !important; 
     }
     [data-testid="stSidebar"] * {
         color: #1a1a1a !important;
+    }
+    
+    /* FIX: Force dropdown menus (popovers) to be light with dark text */
+    [data-baseweb="popover"] > div {
+        background-color: #f5f1e6 !important;
+    }
+    ul[role="listbox"] {
+        background-color: #f5f1e6 !important;
+    }
+    li[role="option"] {
+        background-color: transparent !important;
+    }
+    li[role="option"] span {
+        color: #1a1a1a !important;
+    }
+    /* Add a subtle highlight when hovering over dropdown options */
+    li[role="option"]:hover {
+        background-color: #e3dcc9 !important;
     }
     
     .story-text { 
