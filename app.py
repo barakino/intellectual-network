@@ -124,8 +124,17 @@ def load_data():
 # --- 2. App UI & Styling ---
 st.markdown("""
     <style>
+    /* Force high contrast text on main page */
     .stApp { background-color: #f5f1e6; color: #1a1a1a !important; }
     h1, h2, h3, h4, p, span, label, .stSelectbox { color: #1a1a1a !important; }
+    
+    /* Target the Sidebar explicitly to ensure a light background */
+    [data-testid="stSidebar"] {
+        background-color: #e3dcc9 !important; /* Slightly darker vintage paper color */
+    }
+    [data-testid="stSidebar"] * {
+        color: #1a1a1a !important;
+    }
     
     .story-text { 
         font-size: 1.15rem; 
