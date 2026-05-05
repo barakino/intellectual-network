@@ -124,11 +124,15 @@ def load_data():
 # --- 2. App UI & Styling ---
 st.markdown("""
     <style>
-    /* 1. Force high contrast text on main page */
+    /* HIDE STREAMLIT HEADER AND FOOTER */
+    [data-testid="stHeader"] { visibility: hidden !important; }
+    footer { visibility: hidden !important; }
+
+    /* Force high contrast text on main page */
     .stApp { background-color: #f5f1e6; color: #1a1a1a !important; }
     h1, h2, h3, h4, p, span, label { color: #1a1a1a !important; }
     
-    /* 2. Target the Sidebar explicitly to ensure a light background */
+    /* Target the Sidebar explicitly to ensure a light background */
     [data-testid="stSidebar"] {
         background-color: #e3dcc9 !important; 
     }
@@ -136,20 +140,20 @@ st.markdown("""
         color: #1a1a1a !important;
     }
     
-    /* 3. FIX: The CLOSED state of the dropdown (the chosen category) */
+    /* FIX: The CLOSED state of the dropdown */
     div[data-baseweb="select"] > div {
-        background-color: #f5f1e6 !important; /* Vintage paper background */
-        border-color: #8c7b6c !important; /* A nice vintage brown border */
+        background-color: #f5f1e6 !important; 
+        border-color: #8c7b6c !important; 
         color: #1a1a1a !important;
     }
     div[data-baseweb="select"] span {
-        color: #1a1a1a !important; /* Dark text for the chosen option */
+        color: #1a1a1a !important; 
     }
     div[data-baseweb="select"] svg {
-        fill: #1a1a1a !important; /* Make the little dropdown arrow dark so you can see it */
+        fill: #1a1a1a !important; 
     }
     
-    /* 4. FIX: The OPEN state of the dropdown menus (popovers) */
+    /* FIX: The OPEN state of the dropdown menus (popovers) */
     [data-baseweb="popover"] > div {
         background-color: #f5f1e6 !important;
     }
@@ -166,7 +170,6 @@ st.markdown("""
         background-color: #e3dcc9 !important;
     }
     
-    /* 5. Story Text formatting */
     .story-text { 
         font-size: 1.15rem; 
         color: #1a1a1a !important; 
@@ -194,7 +197,6 @@ st.sidebar.header("Settings & Tools")
 df_nodes, df_edges = load_data()
 features = [col for col in df_nodes.columns if col not in ['ID', 'Name', 'City', 'Discipline']]
 
-# Added UMAP to the dropdown choices
 viz_type = st.sidebar.selectbox("Select Visualization", ["Network Graph", "PCA Projection", "t-SNE Projection", "UMAP Projection", "Dendrogram"])
 
 color_options = ['Discipline', 'City'] + features
@@ -204,18 +206,41 @@ color_by = st.sidebar.selectbox("Color Nodes By", color_options)
 is_categorical = color_by in ['Discipline', 'City']
 
 # --- 3. Visualization Logic ---
-if viz_type in ["PCA Projection", "t-SNE Projection", "UMAP Projection"]:
+if viz_type == "PCA Projection":
     x = StandardScaler().fit_transform(df_nodes[features])
     
-    if viz_type == "PCA Projection":
-        pca = PCA(n_components=2)
-        components = pca.fit_transform(x)
-        var_explained = sum(pca.explained_variance_ratio_) * 100
-        title_suffix = f" (Captures {var_explained:.1f}% of variance)"
-    elif viz_type == "t-SNE Projection":
+    # Calculate top 3 components
+    pca = PCA(n_components=3)
+    components = pca.fit_transform(x)
+    viz_df = pd.DataFrame(components, columns=['PC1', 'PC2', 'PC3'])
+    viz_df = pd.concat([viz_df, df_nodes], axis=1)
+    
+    # UI for selecting PCA axes
+    st.sidebar.markdown("---")
+    st.sidebar.subheader("PCA Axes Selection")
+    pc_options = ['PC1', 'PC2', 'PC3']
+    x_ax = st.sidebar.selectbox("X-Axis", pc_options, index=0)
+    y_ax = st.sidebar.selectbox("Y-Axis", pc_options, index=1)
+    
+    var_x = pca.explained_variance_ratio_[int(x_ax[-1])-1] * 100
+    var_y = pca.explained_variance_ratio_[int(y_ax[-1])-1] * 100
+    
+    fig = px.scatter(viz_df, x=x_ax, y=y_ax, color=color_by,
+                     hover_name='Name', hover_data=['City', 'Discipline'] + features[:3], 
+                     title=f"PCA: {x_ax} vs {y_ax}", template="none")
+    fig.update_traces(marker=dict(size=12, line=dict(width=1, color='DarkSlateGrey')))
+    fig.update_layout(font=dict(color='#1a1a1a'), plot_bgcolor='#f5f1e6', paper_bgcolor='#f5f1e6')
+    fig.update_xaxes(title_text=f"{x_ax} ({var_x:.1f}% Variance)")
+    fig.update_yaxes(title_text=f"{y_ax} ({var_y:.1f}% Variance)")
+    st.plotly_chart(fig, use_container_width=True)
+
+elif viz_type in ["t-SNE Projection", "UMAP Projection"]:
+    x = StandardScaler().fit_transform(df_nodes[features])
+    
+    if viz_type == "t-SNE Projection":
         components = TSNE(n_components=2, perplexity=30, random_state=42).fit_transform(x)
         title_suffix = ""
-    else: # UMAP logic
+    else: 
         reducer = umap.UMAP(random_state=42, n_neighbors=15, min_dist=0.1)
         components = reducer.fit_transform(x)
         title_suffix = " (Preserves Global & Local Structure)"
@@ -267,9 +292,10 @@ elif viz_type == "Network Graph":
         x=node_x, y=node_y, mode='markers', hoverinfo='text', text=node_text, marker=marker_dict
     )
 
+    # FIX: Explicitly setting the title font color to #1a1a1a
     fig = go.Figure(data=[edge_trace, node_trace],
          layout=go.Layout(
-             title=f'Interactive Network (Colored by {color_by})', 
+             title=dict(text=f'Interactive Network (Colored by {color_by})', font=dict(color='#1a1a1a')), 
              showlegend=False, 
              font=dict(color='#1a1a1a'),
              xaxis=dict(showgrid=False, zeroline=False, showticklabels=False), 
