@@ -127,7 +127,7 @@ def load_data():
     return nodes_df, edges_df
 
 # --- 2. App UI & Styling ---
-# A safer, less aggressive CSS approach that respects Streamlit's core layout
+# Extremely safe CSS that only touches colors, never layout or visibility
 st.markdown("""
     <style>
     /* Base App Colors */
@@ -140,7 +140,12 @@ st.markdown("""
         color: #1a1a1a !important;
     }
     
-    /* Style the Sidebar Container explicitly but safely */
+    /* Paint the Header background so it blends in */
+    [data-testid="stHeader"] {
+        background-color: #f5f1e6 !important;
+    }
+    
+    /* Style the Sidebar Container */
     section[data-testid="stSidebar"] {
         background-color: #e3dcc9 !important;
         border-right: 1px solid #c9c1ae;
