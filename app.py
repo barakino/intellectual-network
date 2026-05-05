@@ -14,7 +14,12 @@ import matplotlib.cm as cm
 import matplotlib.colors as mcolors
 import random
 
-st.set_page_config(page_title="Intellectual Network Explorer", layout="wide")
+# FIX 1: Lock the sidebar to always be expanded
+st.set_page_config(
+    page_title="Intellectual Network Explorer", 
+    layout="wide", 
+    initial_sidebar_state="expanded"
+)
 
 # --- 1. Embedded Data Generation ---
 @st.cache_data
@@ -124,22 +129,11 @@ def load_data():
 # --- 2. App UI & Styling ---
 st.markdown("""
     <style>
-    /* HIDE TOP-RIGHT MENU BUT KEEP SIDEBAR TOGGLE ALIVE */
-    [data-testid="stHeader"] { 
-        background-color: transparent !important; 
-    }
-    [data-testid="stToolbar"] { 
-        visibility: hidden !important; /* Hides Deploy, Star, and Menu */
-    }
-    footer { visibility: hidden !important; }
-
-    /* Ensure the sidebar toggle arrow is dark and visible */
-    [data-testid="collapsedControl"] {
-        color: #1a1a1a !important;
-    }
-    [data-testid="collapsedControl"] svg {
-        fill: #1a1a1a !important;
-    }
+    /* FIX 2: Completely hide the header and lock the sidebar buttons */
+    [data-testid="stHeader"] { display: none !important; }
+    footer { display: none !important; }
+    [data-testid="collapsedControl"] { display: none !important; }
+    [data-testid="stSidebarCollapseButton"] { display: none !important; }
 
     /* Force high contrast text on main page */
     .stApp { background-color: #f5f1e6; color: #1a1a1a !important; }
