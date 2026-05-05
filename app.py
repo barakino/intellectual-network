@@ -14,7 +14,7 @@ import matplotlib.cm as cm
 import matplotlib.colors as mcolors
 import random
 
-# FIX 1: Lock the sidebar to always be expanded
+# Ensure the app starts wide and the sidebar starts open
 st.set_page_config(
     page_title="Intellectual Network Explorer", 
     layout="wide", 
@@ -127,48 +127,44 @@ def load_data():
     return nodes_df, edges_df
 
 # --- 2. App UI & Styling ---
+# A safer, less aggressive CSS approach that respects Streamlit's core layout
 st.markdown("""
     <style>
-    /* FIX 2: Completely hide the header and lock the sidebar buttons */
-    [data-testid="stHeader"] { display: none !important; }
-    footer { display: none !important; }
-    [data-testid="collapsedControl"] { display: none !important; }
-    [data-testid="stSidebarCollapseButton"] { display: none !important; }
-
-    /* Force high contrast text on main page */
-    .stApp { background-color: #f5f1e6; color: #1a1a1a !important; }
-    h1, h2, h3, h4, p, span, label { color: #1a1a1a !important; }
-    
-    /* Target the Sidebar explicitly to ensure a light background */
-    [data-testid="stSidebar"] {
-        background-color: #e3dcc9 !important; 
+    /* Base App Colors */
+    .stApp {
+        background-color: #f5f1e6;
     }
-    [data-testid="stSidebar"] * {
+    
+    /* Ensure all main text is dark */
+    .stApp, .stApp p, .stApp h1, .stApp h2, .stApp h3, .stApp label, .stApp span {
         color: #1a1a1a !important;
     }
     
-    /* FIX: The CLOSED state of the dropdown */
+    /* Style the Sidebar Container explicitly but safely */
+    section[data-testid="stSidebar"] {
+        background-color: #e3dcc9 !important;
+        border-right: 1px solid #c9c1ae;
+    }
+    
+    /* Fix Selectbox Input Area (Closed State) */
     div[data-baseweb="select"] > div {
-        background-color: #f5f1e6 !important; 
-        border-color: #8c7b6c !important; 
-        color: #1a1a1a !important;
-    }
-    div[data-baseweb="select"] span {
-        color: #1a1a1a !important; 
-    }
-    div[data-baseweb="select"] svg {
-        fill: #1a1a1a !important; 
+        background-color: #f5f1e6 !important;
+        border-color: #8c7b6c !important;
     }
     
-    /* FIX: The OPEN state of the dropdown menus (popovers) */
-    [data-baseweb="popover"] > div {
-        background-color: #f5f1e6 !important;
+    /* Fix Selectbox Text (Closed State) */
+    div[data-baseweb="select"] span {
+        color: #1a1a1a !important;
     }
+    
+    /* Fix Selectbox Dropdown Icon */
+    div[data-baseweb="select"] svg {
+        fill: #1a1a1a !important;
+    }
+    
+    /* Fix Dropdown Menu Popover (Open State) */
     ul[role="listbox"] {
         background-color: #f5f1e6 !important;
-    }
-    li[role="option"] {
-        background-color: transparent !important;
     }
     li[role="option"] span {
         color: #1a1a1a !important;
@@ -176,7 +172,8 @@ st.markdown("""
     li[role="option"]:hover {
         background-color: #e3dcc9 !important;
     }
-    
+
+    /* Custom Story Text Class */
     .story-text { 
         font-size: 1.15rem; 
         color: #1a1a1a !important; 
@@ -199,12 +196,16 @@ st.markdown("""
 </div>
 """, unsafe_allow_html=True)
 
+# Build Sidebar Controls
 st.sidebar.header("Settings & Tools")
 
 df_nodes, df_edges = load_data()
 features = [col for col in df_nodes.columns if col not in ['ID', 'Name', 'City', 'Discipline']]
 
-viz_type = st.sidebar.selectbox("Select Visualization", ["Network Graph", "PCA Projection", "t-SNE Projection", "UMAP Projection", "Dendrogram"])
+viz_type = st.sidebar.selectbox(
+    "Select Visualization", 
+    ["Network Graph", "PCA Projection", "t-SNE Projection", "UMAP Projection", "Dendrogram"]
+)
 
 color_options = ['Discipline', 'City'] + features
 random.Random(42).shuffle(color_options) 
@@ -216,13 +217,11 @@ is_categorical = color_by in ['Discipline', 'City']
 if viz_type == "PCA Projection":
     x = StandardScaler().fit_transform(df_nodes[features])
     
-    # Calculate top 3 components
     pca = PCA(n_components=3)
     components = pca.fit_transform(x)
     viz_df = pd.DataFrame(components, columns=['PC1', 'PC2', 'PC3'])
     viz_df = pd.concat([viz_df, df_nodes], axis=1)
     
-    # UI for selecting PCA axes
     st.sidebar.markdown("---")
     st.sidebar.subheader("PCA Axes Selection")
     pc_options = ['PC1', 'PC2', 'PC3']
